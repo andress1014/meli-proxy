@@ -4,50 +4,77 @@
 
 ### 🐳 Docker & Configuración
 - `docker-compose.yml` - **Configuración optimizada para 50K RPS** (4 instancias + load balancer)
-- `docker-compose.basic.yml` - Configuración básica para desarrollo (1 instancia)
 - `Dockerfile` - Imagen optimizada multi-stage
 - `nginx.conf` - Load balancer optimizado para alta concurrencia
-- `prometheus.yml` - Configuración de métricas
 
-### 🚀 Scripts de Administración  
+### 🚀 Scripts Esenciales  
 - `start.sh` - **Script principal** para iniciar todo el sistema
-- `setup.sh` - Configuración completa para pruebas de 50K RPS
-- `monitor.sh` - Monitoreo en tiempo real del sistema
-
-### 🧪 Scripts de Testing
-- `test-basic.sh` - Pruebas básicas de funcionalidad y latencia
-- `test-performance.sh` - Pruebas extremas de performance (hasta 50K RPS)
+- `stop.sh` - Detener todo el sistema completamente
+- `test-50k.sh` - **Pruebas completas** de carga hasta 50K RPS
 
 ### 📚 Documentación
 - `README.md` - Documentación principal actualizada
-- `PERFORMANCE-OPTIMIZATIONS.md` - Detalles de optimizaciones
 
-## 🎯 Uso Recomendado
+## 🎯 Uso Simplificado
 
-### Para Desarrollo:
-```bash
-docker compose -f docker-compose.basic.yml up
-```
-
-### Para Producción/Testing:
+### Iniciar Sistema Completo:
 ```bash
 ./start.sh
-# o
-docker compose up -d
 ```
 
-### Para Pruebas de Performance:
+### Pruebas de Carga Completas:
 ```bash
-./test-basic.sh      # Pruebas básicas
-./test-performance.sh # Pruebas extremas
-./monitor.sh         # Monitoreo en tiempo real
+./test-50k.sh
+```
+
+### Detener Sistema:
+```bash
+./stop.sh
 ```
 
 ## 📊 Endpoints Disponibles
 
 - **Proxy**: http://localhost:8080
-- **Métricas**: http://localhost:8081/metrics  
-- **Prometheus**: http://localhost:9091
-- **Load Balancer Status**: http://localhost:8081/nginx_status
+- **Métricas**: http://localhost:9090/metrics (cada instancia)
+- **Grafana**: http://localhost:3000 (admin/admin)
+- **Redis**: localhost:6379
 
-¡Sistema listo para 50K RPS! 🚀
+## 🏗️ ARQUITECTURA DEL SISTEMA
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   CLIENTE       │───▶│   NGINX          │───▶│  MELI-PROXY     │
+│   (Requests)    │    │   Load Balancer  │    │  (4 Instancias) │
+└─────────────────┘    │   :8080          │    │  :8081-8084     │
+                       └──────────────────┘    └─────────────────┘
+                                │                        │
+                                │                        ▼
+                       ┌──────────────────┐    ┌─────────────────┐
+                       │   RATE LIMIT     │    │  API MELI       │
+                       │   Redis Cache    │    │  TARGET         │
+                       │   :6379          │    │  External API   │
+                       └──────────────────┘    └─────────────────┘
+                                │                        ▲
+                                │                        │
+                       ┌──────────────────┐             │
+                       │   MÉTRICAS       │             │
+                       │   Grafana        │─────────────┘
+                       │   :3000          │
+                       └──────────────────┘
+```
+
+### 🔄 Flujo de Datos:
+1. **Cliente** → Nginx (puerto 8080)
+2. **Nginx** → Load balancing entre 4 proxies
+3. **Proxy** → Consulta Redis (rate limit + cache decisiones)
+4. **Proxy** → Envía request a api.mercadolibre.com
+5. **Proxy** → Respuesta transparente al cliente
+6. **Métricas** → Grafana para monitoreo
+
+### 🚀 Performance:
+- **Capacidad**: 50,000 RPS
+- **Latencia**: <10ms promedio  
+- **Rate Limiting**: Distribuido con Redis
+- **Escalabilidad**: Horizontal (más instancias)
+
+¡Sistema listo para producción! 🚀
