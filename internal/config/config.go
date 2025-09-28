@@ -28,8 +28,8 @@ func Load() *Config {
 		TargetURL:    getEnv("TARGET_URL", "https://api.mercadolibre.com"),
 		RedisURL:     getEnv("REDIS_URL", "redis://localhost:6379"),
 		LogLevel:     getEnv("LOG_LEVEL", "info"),
-		RedisEnabled: getEnvBool("REDIS_ENABLED", true),
-		DefaultRPS:   getEnvInt("DEFAULT_RPS", 100),
+		RedisEnabled: getEnvBool("REDIS_ENABLED", true),  // Activado por defecto
+		DefaultRPS:   getEnvInt("DEFAULT_RPS", 100),      // Rate limit por defecto
 	}
 
 	// Cargar configuraciones de rate limiting desde variables de entorno
