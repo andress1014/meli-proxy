@@ -120,7 +120,7 @@ func (s *Server) HealthHandler(w http.ResponseWriter, r *http.Request) {
 		healthInfo := map[string]interface{}{
 			"status":     "healthy",
 			"service":    "meli-proxy",
-			"version":    "v1.4.0", // Webhook working!
+			"version":    "v1.5.0", // Webhook working!
 			"uptime":     uptime.String(),
 			"target_url": s.config.TargetURL,
 			"system": map[string]interface{}{
