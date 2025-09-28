@@ -13,12 +13,12 @@ import (
 )
 
 type RateLimitMiddleware struct {
-	limiter *ratelimit.RedisLimiter
+	limiter ratelimit.Limiter
 	config  *config.Config
 	logger  *zap.Logger
 }
 
-func NewRateLimitMiddleware(limiter *ratelimit.RedisLimiter, cfg *config.Config, logger *zap.Logger) *RateLimitMiddleware {
+func NewRateLimitMiddleware(limiter ratelimit.Limiter, cfg *config.Config, logger *zap.Logger) *RateLimitMiddleware {
 	return &RateLimitMiddleware{
 		limiter: limiter,
 		config:  cfg,

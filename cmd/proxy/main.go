@@ -41,10 +41,18 @@ func main() {
 	metricsServer := metrics.NewServer(cfg.MetricsPort)
 
 	// Rate limiter
-	rateLimiter, err := ratelimit.NewRedisLimiter(cfg.RedisURL)
-	if err != nil {
-		log.Error("failed to create rate limiter", zap.Error(err))
-		os.Exit(1)
+	var rateLimiter ratelimit.Limiter
+	var err error
+	
+	if cfg.RedisEnabled {
+		rateLimiter, err = ratelimit.NewRedisLimiter(cfg.RedisURL)
+		if err != nil {
+			log.Error("failed to create Redis rate limiter", zap.Error(err))
+			os.Exit(1)
+		}
+	} else {
+		log.Info("using dummy rate limiter (no limiting)")
+		rateLimiter = ratelimit.NewDummyLimiter()
 	}
 	defer rateLimiter.Close()
 

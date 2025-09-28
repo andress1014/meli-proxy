@@ -1,0 +1,3 @@
+GET http://localhost:8081/health
+GET http://localhost:8081/v1/categories/MLA5725
+GET http://localhost:8081/v1/sites/MLA

@@ -1,0 +1,8 @@
+GET http://137.184.47.82:8081/categories/MLA1051
+GET http://137.184.47.82:8081/categories/MLA1055
+GET http://137.184.47.82:8081/categories/MLA1648
+GET http://137.184.47.82:8081/sites/MLA
+GET http://137.184.47.82:8081/sites/MLB
+GET http://137.184.47.82:8081/sites/MCO
+GET http://137.184.47.82:8081/categories/MLA5725
+GET http://137.184.47.82:8081/categories/MLA1384

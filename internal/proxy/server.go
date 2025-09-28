@@ -23,7 +23,7 @@ type Server struct {
 	startTime  time.Time
 }
 
-func NewServer(cfg *config.Config, rateLimiter *ratelimit.RedisLimiter, logger *zap.Logger) *Server {
+func NewServer(cfg *config.Config, rateLimiter ratelimit.Limiter, logger *zap.Logger) *Server {
 	// Parse target URL
 	targetURL, err := url.Parse(cfg.TargetURL)
 	if err != nil {

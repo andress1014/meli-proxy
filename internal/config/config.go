@@ -12,6 +12,7 @@ type Config struct {
 	TargetURL   string
 	RedisURL    string
 	LogLevel    string
+	RedisEnabled bool
 
 	// Rate limiting configuration
 	DefaultRPS      int
@@ -22,12 +23,13 @@ type Config struct {
 
 func Load() *Config {
 	cfg := &Config{
-		Port:        getEnv("PORT", "8080"),
-		MetricsPort: getEnv("METRICS_PORT", "9090"),
-		TargetURL:   getEnv("TARGET_URL", "https://api.mercadolibre.com"),
-		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
-		LogLevel:    getEnv("LOG_LEVEL", "info"),
-		DefaultRPS:  getEnvInt("DEFAULT_RPS", 100),
+		Port:         getEnv("PORT", "8080"),
+		MetricsPort:  getEnv("METRICS_PORT", "9090"),
+		TargetURL:    getEnv("TARGET_URL", "https://api.mercadolibre.com"),
+		RedisURL:     getEnv("REDIS_URL", "redis://localhost:6379"),
+		LogLevel:     getEnv("LOG_LEVEL", "info"),
+		RedisEnabled: getEnvBool("REDIS_ENABLED", true),
+		DefaultRPS:   getEnvInt("DEFAULT_RPS", 100),
 	}
 
 	// Cargar configuraciones de rate limiting desde variables de entorno
@@ -49,6 +51,15 @@ func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
 		}
 	}
 	return defaultValue
