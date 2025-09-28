@@ -120,7 +120,7 @@ func (s *Server) HealthHandler(w http.ResponseWriter, r *http.Request) {
 		healthInfo := map[string]interface{}{
 			"status":     "healthy",
 			"service":    "meli-proxy",
-			"version":    "v1.3.0", // Bump version
+			"version":    "v1.3.1", // Test webhook
 			"uptime":     uptime.String(),
 			"target_url": s.config.TargetURL,
 			"system": map[string]interface{}{
@@ -155,16 +155,16 @@ func (s *Server) Handler() http.Handler {
 			s.HealthHandler(w, r)
 			return
 		}
-		
+
 		// Handle status endpoint (simplified health check)
 		if r.URL.Path == "/status" && r.Method == "GET" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			statusInfo := map[string]interface{}{
-				"status":   "ok",
-				"version":  "v1.3.0",
-				"uptime":   time.Since(s.startTime).String(),
-				"service":  "meli-proxy",
+				"status":  "ok",
+				"version": "v1.3.1",
+				"uptime":  time.Since(s.startTime).String(),
+				"service": "meli-proxy",
 			}
 			json.NewEncoder(w).Encode(statusInfo)
 			return
