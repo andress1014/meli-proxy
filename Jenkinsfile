@@ -6,18 +6,20 @@ pipeline {
         DOCKER_TAG = "${BUILD_NUMBER}"
         PROJECT_DIR = '/opt/meli-proxy'
         COMPOSE_FILE = 'docker-compose.logging.yml'
+        REPO_URL = 'https://github.com/andress1014/meli-proxy.git'
+        BRANCH = 'main'
     }
     
     stages {
         stage('🔍 Checkout') {
             steps {
-                echo 'Checking out code...'
+                echo 'Checking out code from GitHub...'
                 deleteDir() // Limpiar workspace completamente
-                checkout scm
                 sh '''
+                    git clone --branch ${BRANCH} ${REPO_URL} .
                     pwd
                     ls -la
-                    git status || echo "Git status not available, continuing..."
+                    git status
                 '''
             }
         }
