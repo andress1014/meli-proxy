@@ -161,8 +161,8 @@ make stop
 ## 📝 Comandos Útiles
 
 ```bash
-# Test básico
-curl http://localhost:8080/categories/MLA1234
+# Test básico con categoría válida
+curl http://localhost:8080/categories/MLA120352
 
 # Test con headers de rate limit
 curl -I http://localhost:8080/items/MLA123456
@@ -173,6 +173,53 @@ curl http://localhost:9090/metrics | grep meli_proxy
 # Health check
 curl http://localhost:8080/health
 ```
+
+## 🧪 Testing
+
+El proyecto incluye una suite completa de tests organizados en la carpeta `tests/`.
+
+### Comandos de Testing
+
+```bash
+# Ejecutar todos los tests
+make test
+
+# Solo tests unitarios
+make test-unit
+
+# Solo tests de integración
+make test-integration
+
+# Tests con coverage report
+make test-coverage
+
+# Tests con race detection
+make test-race
+
+# Benchmarks de performance
+make test-bench
+```
+
+### Estructura de Tests
+
+```
+tests/
+├── unit/                   # Tests unitarios
+│   ├── config_test.go     # Tests de configuración
+│   ├── httpclient_test.go # Tests del cliente HTTP
+│   ├── metrics_test.go    # Tests de métricas
+│   └── ratelimit_utils_test.go # Tests de rate limiting
+└── integration/            # Tests de integración
+    └── proxy_integration_test.go # Tests end-to-end
+```
+
+### Cobertura de Tests
+
+- ✅ **Configuración**: Parsing de variables de entorno y validación
+- ✅ **HTTP Client**: Optimizaciones de conexiones y manejo de redirects  
+- ✅ **Métricas**: Prometheus metrics y async recording
+- ✅ **Rate Limiting**: Extracción de IP y normalización de paths
+- ✅ **Integración**: Tests end-to-end con servidor real
 
 ## 🏆 Rendimiento
 

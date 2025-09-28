@@ -1,9 +1,11 @@
-package ratelimit
+package unit
 
 import (
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/andress1014/meli-proxy/internal/ratelimit"
 )
 
 func TestExtractIP(t *testing.T) {
@@ -56,7 +58,7 @@ func TestExtractIP(t *testing.T) {
 				req.Header.Set(key, value)
 			}
 
-			ip := ExtractIP(req)
+			ip := ratelimit.ExtractIP(req)
 			if ip != tt.expectedIP {
 				t.Errorf("ExtractIP() = %v, want %v", ip, tt.expectedIP)
 			}
@@ -114,7 +116,7 @@ func TestNormalizePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := NormalizePath(tt.path)
+			result := ratelimit.NormalizePath(tt.path)
 			if result != tt.expected {
 				t.Errorf("NormalizePath(%v) = %v, want %v", tt.path, result, tt.expected)
 			}
@@ -132,7 +134,7 @@ func TestGetLimitKeys(t *testing.T) {
 	// Simular URL
 	req.URL = &url.URL{Path: "/categories/MLA1234"}
 
-	keys := GetLimitKeys(req)
+	keys := ratelimit.GetLimitKeys(req)
 
 	expectedKeys := map[string]string{
 		"ip":      "ip::203.0.113.10",
