@@ -2,10 +2,12 @@ package proxy
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/andress1014/meli-proxy/internal/config"
@@ -21,6 +23,7 @@ type Server struct {
 	logger     *zap.Logger
 	middleware []func(http.Handler) http.Handler
 	startTime  time.Time
+	client     *http.Client
 }
 
 func NewServer(cfg *config.Config, rateLimiter ratelimit.Limiter, logger *zap.Logger) *Server {
@@ -87,6 +90,7 @@ func NewServer(cfg *config.Config, rateLimiter ratelimit.Limiter, logger *zap.Lo
 		logger:     logger,
 		middleware: middlewares,
 		startTime:  time.Now(),
+		client:     client,
 	}
 }
 
@@ -170,7 +174,94 @@ func (s *Server) Handler() http.Handler {
 			return
 		}
 
-		// Handle everything else through proxy
+		// Handle no-rate-limit routes
+		if s.isNoRateLimitRoute(r.URL.Path) {
+			s.ServeNoRateLimit(w, r)
+			return
+		}
+
+		// Handle everything else through proxy with rate limiting
 		s.ServeHTTP(w, r)
 	})
+}
+
+// isNoRateLimitRoute checks if the request path is a no-rate-limit route
+func (s *Server) isNoRateLimitRoute(path string) bool {
+	return strings.HasPrefix(path, "/no-ratelimit/")
+}
+
+// ServeNoRateLimit handles requests without rate limiting
+func (s *Server) ServeNoRateLimit(w http.ResponseWriter, r *http.Request) {
+	// Remove the no-ratelimit prefix
+	originalPath := strings.TrimPrefix(r.URL.Path, "/no-ratelimit")
+	
+	// Create a new request with the modified path
+	targetURL := s.config.TargetURL + originalPath
+	if r.URL.RawQuery != "" {
+		targetURL += "?" + r.URL.RawQuery
+	}
+
+	// Create proxy request
+	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL, r.Body)
+	if err != nil {
+		s.logger.Error("Error creating proxy request", 
+			zap.Error(err), 
+			zap.String("target_url", targetURL))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Copy headers
+	for key, values := range r.Header {
+		for _, value := range values {
+			proxyReq.Header.Add(key, value)
+		}
+	}
+
+	// Set X-Forwarded headers
+	clientIP := r.RemoteAddr
+	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
+		clientIP = ip
+	} else if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		clientIP = ip
+	}
+	proxyReq.Header.Set("X-Forwarded-For", clientIP)
+	proxyReq.Header.Set("X-Forwarded-Host", r.Host)
+	proxyReq.Header.Set("X-Forwarded-Proto", "http")
+
+	// Execute request
+	resp, err := s.client.Do(proxyReq)
+	if err != nil {
+		s.logger.Error("Error executing proxy request", 
+			zap.Error(err), 
+			zap.String("target_url", targetURL))
+		http.Error(w, "Bad Gateway", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Copy response headers
+	for key, values := range resp.Header {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+
+	// Set response status
+	w.WriteHeader(resp.StatusCode)
+
+	// Copy response body
+	_, err = io.Copy(w, resp.Body)
+	if err != nil {
+		s.logger.Error("Error copying response body", zap.Error(err))
+	}
+
+	// Log request without rate limit info
+	s.logger.Info("No-rate-limit request served",
+		zap.String("method", r.Method),
+		zap.String("original_path", originalPath),
+		zap.String("target_url", targetURL),
+		zap.Int("status", resp.StatusCode),
+		zap.String("client_ip", clientIP),
+	)
 }
