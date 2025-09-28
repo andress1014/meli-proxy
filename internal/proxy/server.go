@@ -162,7 +162,7 @@ func (s *Server) Handler() http.Handler {
 			w.WriteHeader(http.StatusOK)
 			statusInfo := map[string]interface{}{
 				"status":  "ok",
-				"version": "v1.4.0",
+				"version": "v1.5.0",
 				"uptime":  time.Since(s.startTime).String(),
 				"service": "meli-proxy",
 			}
