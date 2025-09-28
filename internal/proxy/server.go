@@ -120,15 +120,21 @@ func (s *Server) HealthHandler(w http.ResponseWriter, r *http.Request) {
 		healthInfo := map[string]interface{}{
 			"status":     "healthy",
 			"service":    "meli-proxy",
-			"version":    "v1.2.0",
+			"version":    "v1.3.0", // Bump version
 			"uptime":     uptime.String(),
 			"target_url": s.config.TargetURL,
 			"system": map[string]interface{}{
 				"goroutines": runtime.NumGoroutine(),
 				"memory_mb":  m.Alloc / 1024 / 1024,
 				"gc_cycles":  m.NumGC,
+				"cpu_count":  runtime.NumCPU(),
 			},
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
+			"deployment": map[string]interface{}{
+				"environment": "production",
+				"region":      "sfo3",
+				"instances":   4,
+			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -147,6 +153,20 @@ func (s *Server) Handler() http.Handler {
 		// Handle health check
 		if r.URL.Path == "/health" && r.Method == "GET" {
 			s.HealthHandler(w, r)
+			return
+		}
+		
+		// Handle status endpoint (simplified health check)
+		if r.URL.Path == "/status" && r.Method == "GET" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			statusInfo := map[string]interface{}{
+				"status":   "ok",
+				"version":  "v1.3.0",
+				"uptime":   time.Since(s.startTime).String(),
+				"service":  "meli-proxy",
+			}
+			json.NewEncoder(w).Encode(statusInfo)
 			return
 		}
 

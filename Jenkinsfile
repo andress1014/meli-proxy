@@ -50,17 +50,26 @@ pipeline {
           echo "Waiting for services to be ready..."
           sleep 15
           
-          # Check individual instances
+          # Check individual instances - health endpoint
           for port in 8082 8083 8084 8085; do
-            echo "Checking instance on port $port..."
-            curl -s http://localhost:$port/health || echo "Warning: Instance $port not ready"
+            echo "Checking health on port $port..."
+            curl -s http://localhost:$port/health | jq . || echo "Warning: Instance $port not ready"
           done
           
-          # Check load balancer
-          echo "Checking load balancer..."
-          curl -s http://localhost:8081/health || echo "Warning: Load balancer not ready"
+          # Check individual instances - status endpoint  
+          for port in 8082 8083 8084 8085; do
+            echo "Checking status on port $port..."
+            curl -s http://localhost:$port/status | jq . || echo "Warning: Status $port not ready"
+          done
           
-          echo "✅ Health check completed"
+          # Check load balancer endpoints
+          echo "Checking load balancer health..."
+          curl -s http://localhost:8081/health | jq . || echo "Warning: Load balancer health not ready"
+          
+          echo "Checking load balancer status..."
+          curl -s http://localhost:8081/status | jq . || echo "Warning: Load balancer status not ready"
+          
+          echo "✅ Health check completed - v1.3.0 deployed!"
         '''
       }
     }
