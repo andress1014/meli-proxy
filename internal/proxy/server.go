@@ -114,15 +114,15 @@ func (s *Server) HealthHandler(w http.ResponseWriter, r *http.Request) {
 		// Collect system stats
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
-		
+
 		uptime := time.Since(s.startTime)
-		
+
 		healthInfo := map[string]interface{}{
-			"status":      "healthy",
-			"service":     "meli-proxy",
-			"version":     "v1.2.0",
-			"uptime":      uptime.String(),
-			"target_url":  s.config.TargetURL,
+			"status":     "healthy",
+			"service":    "meli-proxy",
+			"version":    "v1.2.0",
+			"uptime":     uptime.String(),
+			"target_url": s.config.TargetURL,
 			"system": map[string]interface{}{
 				"goroutines": runtime.NumGoroutine(),
 				"memory_mb":  m.Alloc / 1024 / 1024,
@@ -130,7 +130,7 @@ func (s *Server) HealthHandler(w http.ResponseWriter, r *http.Request) {
 			},
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(healthInfo)
