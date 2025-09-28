@@ -164,9 +164,11 @@ pipeline {
             echo '🎉 Pipeline completed successfully!'
             sh '''
                 echo "✅ Deployment successful at $(date)"
-                echo "🌐 Service available at: http://137.184.47.82:8080"
-                echo "📊 Metrics: http://137.184.47.82:9090/metrics"
-                echo "🏥 Health: http://137.184.47.82:8080/health"
+                echo "🌐 Service available at: http://137.184.47.82:8081"
+                echo "📊 Metrics proxy1: http://137.184.47.82:9091/metrics"
+                echo "📊 Metrics proxy2: http://137.184.47.82:9092/metrics"
+                echo "📊 Grafana: http://137.184.47.82:3000"
+                echo "🚀 Jenkins: http://137.184.47.82:8080"
             '''
         }
         
