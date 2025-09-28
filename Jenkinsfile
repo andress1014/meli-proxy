@@ -42,6 +42,28 @@ pipeline {
         '''
       }
     }
+    
+    stage('🏥 Health Check') {
+      steps {
+        echo 'Verifying deployment health...'
+        sh '''
+          echo "Waiting for services to be ready..."
+          sleep 15
+          
+          # Check individual instances
+          for port in 8082 8083 8084 8085; do
+            echo "Checking instance on port $port..."
+            curl -s http://localhost:$port/health || echo "Warning: Instance $port not ready"
+          done
+          
+          # Check load balancer
+          echo "Checking load balancer..."
+          curl -s http://localhost:8081/health || echo "Warning: Load balancer not ready"
+          
+          echo "✅ Health check completed"
+        '''
+      }
+    }
   }
   
   post {

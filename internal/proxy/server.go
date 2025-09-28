@@ -1,9 +1,12 @@
 package proxy
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"runtime"
+	"time"
 
 	"github.com/andress1014/meli-proxy/internal/config"
 	"github.com/andress1014/meli-proxy/internal/middleware"
@@ -17,6 +20,7 @@ type Server struct {
 	config     *config.Config
 	logger     *zap.Logger
 	middleware []func(http.Handler) http.Handler
+	startTime  time.Time
 }
 
 func NewServer(cfg *config.Config, rateLimiter *ratelimit.RedisLimiter, logger *zap.Logger) *Server {
@@ -82,6 +86,7 @@ func NewServer(cfg *config.Config, rateLimiter *ratelimit.RedisLimiter, logger *
 		config:     cfg,
 		logger:     logger,
 		middleware: middlewares,
+		startTime:  time.Now(),
 	}
 }
 
@@ -106,9 +111,29 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Health check endpoint
 func (s *Server) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/health" && r.Method == "GET" {
+		// Collect system stats
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		
+		uptime := time.Since(s.startTime)
+		
+		healthInfo := map[string]interface{}{
+			"status":      "healthy",
+			"service":     "meli-proxy",
+			"version":     "v1.2.0",
+			"uptime":      uptime.String(),
+			"target_url":  s.config.TargetURL,
+			"system": map[string]interface{}{
+				"goroutines": runtime.NumGoroutine(),
+				"memory_mb":  m.Alloc / 1024 / 1024,
+				"gc_cycles":  m.NumGC,
+			},
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}
+		
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"healthy","service":"meli-proxy"}`))
+		json.NewEncoder(w).Encode(healthInfo)
 		return
 	}
 
