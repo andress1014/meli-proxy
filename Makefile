@@ -44,6 +44,14 @@ help:
 	@echo "  make open-grafana   - Abrir Grafana en navegador"
 	@echo "  make test-loki      - Verificar API de Loki"
 	@echo ""
+	@echo "🚀 Deployment (Producción):"
+	@echo "  make deploy-server  - Despliegue completo en servidor"
+	@echo "  make setup-server   - Configurar servidor (primera vez)"
+	@echo "  make deploy-app     - Actualizar solo la aplicación"
+	@echo "  make check-server   - Verificar salud del servidor"
+	@echo "  make server-logs    - Ver logs del servidor"
+	@echo "  make server-status  - Estado de servicios en servidor"
+	@echo ""
 
 # Instalar/actualizar dependencias
 deps:
@@ -214,3 +222,70 @@ open-grafana:
 test-loki:
 	@echo "🔍 Verificando API de Loki..."
 	curl -s http://localhost:3100/ready && echo "✅ Loki ready" || echo "❌ Loki no disponible"
+
+# === COMANDOS DE DEPLOYMENT ===
+
+# Despliegue completo en servidor
+deploy-server:
+	@echo "🚀 Desplegando en servidor de producción..."
+	chmod +x deployment/deploy-all.sh
+	./deployment/deploy-all.sh
+	@echo "✅ Despliegue completado"
+
+# Configurar solo el servidor (primera vez)
+setup-server:
+	@echo "🔧 Configurando servidor inicial..."
+	scp deployment/setup-server.sh root@137.184.47.82:/tmp/
+	ssh root@137.184.47.82 "chmod +x /tmp/setup-server.sh && /tmp/setup-server.sh"
+	@echo "✅ Servidor configurado"
+
+# Configurar solo Jenkins
+setup-jenkins:
+	@echo "⚙️ Configurando Jenkins..."
+	scp deployment/configure-jenkins.sh root@137.184.47.82:/tmp/
+	ssh root@137.184.47.82 "chmod +x /tmp/configure-jenkins.sh && /tmp/configure-jenkins.sh"
+	@echo "✅ Jenkins configurado"
+
+# Actualizar aplicación en servidor
+deploy-app:
+	@echo "📦 Actualizando aplicación en servidor..."
+	@echo "🏗️ Building imagen..."
+	docker build -t $(DOCKER_IMAGE):latest .
+	docker save $(DOCKER_IMAGE):latest > meli-proxy-latest.tar
+	@echo "📤 Copiando al servidor..."
+	scp meli-proxy-latest.tar root@137.184.47.82:/tmp/
+	scp deployment/docker-compose.prod.yml root@137.184.47.82:/opt/meli-proxy/docker-compose.logging.yml
+	@echo "🚀 Desplegando..."
+	ssh root@137.184.47.82 "cd /opt/meli-proxy && \
+		docker load < /tmp/meli-proxy-latest.tar && \
+		docker-compose -f docker-compose.logging.yml down --remove-orphans && \
+		docker-compose -f docker-compose.logging.yml up -d && \
+		rm /tmp/meli-proxy-latest.tar"
+	rm meli-proxy-latest.tar
+	@echo "✅ Aplicación actualizada"
+
+# Health check del servidor
+check-server:
+	@echo "🏥 Verificando salud del servidor..."
+	@curl -f http://137.184.47.82/health && echo "✅ Aplicación OK" || echo "❌ Aplicación con problemas"
+	@curl -f http://137.184.47.82/metrics | grep -q meli_proxy && echo "✅ Métricas OK" || echo "❌ Métricas con problemas"
+	@echo "🌐 Servicios disponibles:"
+	@echo "   • App: http://137.184.47.82"
+	@echo "   • Jenkins: http://137.184.47.82/jenkins/"
+	@echo "   • Grafana: http://137.184.47.82/grafana/"
+
+# Logs del servidor
+server-logs:
+	@echo "📋 Obteniendo logs del servidor..."
+	ssh root@137.184.47.82 "cd /opt/meli-proxy && docker-compose -f docker-compose.logging.yml logs --tail=100"
+
+# Reiniciar servicios en servidor
+restart-server:
+	@echo "🔄 Reiniciando servicios en servidor..."
+	ssh root@137.184.47.82 "cd /opt/meli-proxy && docker-compose -f docker-compose.logging.yml restart"
+	@echo "✅ Servicios reiniciados"
+
+# Status del servidor
+server-status:
+	@echo "📊 Estado del servidor..."
+	ssh root@137.184.47.82 "cd /opt/meli-proxy && docker-compose -f docker-compose.logging.yml ps"

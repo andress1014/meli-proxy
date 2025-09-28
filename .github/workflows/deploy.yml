@@ -1,0 +1,212 @@
+name: 🚀 Deploy Meli-Proxy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  SERVER_HOST: 137.184.47.82
+  SERVER_USER: root
+  PROJECT_PATH: /opt/meli-proxy
+
+jobs:
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐹 Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: 📦 Download dependencies
+      run: go mod download
+      
+    - name: 🧪 Run tests
+      run: make test
+      
+    - name: 📊 Generate coverage report
+      run: make test-coverage
+      
+    - name: 📤 Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+
+  security:
+    name: 🛡️ Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Run Gosec Security Scanner
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: '-fmt sarif -out gosec.sarif ./...'
+        
+    - name: 📤 Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: gosec.sarif
+
+  build:
+    name: 🔧 Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 🔧 Build Docker image
+      run: |
+        docker build -t meli-proxy-optimized:${{ github.sha }} .
+        docker tag meli-proxy-optimized:${{ github.sha }} meli-proxy-optimized:latest
+        
+    - name: 💾 Save Docker image
+      run: |
+        docker save meli-proxy-optimized:${{ github.sha }} > meli-proxy-image.tar
+        
+    - name: 📤 Upload Docker image artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: docker-image
+        path: meli-proxy-image.tar
+        retention-days: 1
+
+  deploy:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 📥 Download Docker image
+      uses: actions/download-artifact@v3
+      with:
+        name: docker-image
+        
+    - name: 🔑 Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts
+        
+    - name: 📤 Copy files to server
+      run: |
+        # Copiar archivos del proyecto
+        scp -i ~/.ssh/id_ed25519 -r . ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/
+        
+        # Copiar imagen Docker
+        scp -i ~/.ssh/id_ed25519 meli-proxy-image.tar ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/tmp/
+        
+    - name: 🚀 Deploy on server
+      run: |
+        ssh -i ~/.ssh/id_ed25519 ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << 'EOF'
+          set -e
+          
+          # Cargar nueva imagen Docker
+          docker load < /tmp/meli-proxy-image.tar
+          rm /tmp/meli-proxy-image.tar
+          
+          # Ir al directorio del proyecto
+          cd ${{ env.PROJECT_PATH }}
+          
+          # Backup de configuración actual
+          if [ -f docker-compose.logging.yml ]; then
+            cp docker-compose.logging.yml docker-compose.logging.yml.backup.$(date +%Y%m%d_%H%M%S)
+          fi
+          
+          # Detener servicios actuales
+          docker-compose -f docker-compose.logging.yml down --remove-orphans || true
+          
+          # Limpiar contenedores e imágenes antiguas
+          docker container prune -f
+          docker image prune -f
+          
+          # Iniciar servicios nuevos
+          docker-compose -f docker-compose.logging.yml up -d
+          
+          # Esperar que los servicios estén listos
+          echo "Esperando que los servicios estén listos..."
+          sleep 30
+          
+        EOF
+        
+    - name: ✅ Health Check
+      run: |
+        ssh -i ~/.ssh/id_ed25519 ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << 'EOF'
+          # Función para verificar salud
+          check_health() {
+            local max_attempts=10
+            local attempt=1
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "Health check attempt $attempt/$max_attempts"
+              
+              if curl -f http://localhost:8080/health; then
+                echo "✅ Health check passed"
+                return 0
+              fi
+              
+              if [ $attempt -eq $max_attempts ]; then
+                echo "❌ Health check failed"
+                return 1
+              fi
+              
+              sleep 10
+              attempt=$((attempt + 1))
+            done
+          }
+          
+          # Verificar salud del servicio
+          check_health
+          
+          # Verificar métricas
+          curl -f http://localhost:9090/metrics | grep -q meli_proxy
+          
+          # Test funcional
+          curl -f http://localhost:8080/categories/MLA120352 | jq . > /dev/null
+          
+          echo "✅ Deployment successful!"
+          echo "🌐 Service: http://${{ env.SERVER_HOST }}"
+          echo "📊 Metrics: http://${{ env.SERVER_HOST }}/metrics"
+          echo "🏥 Health: http://${{ env.SERVER_HOST }}/health"
+          
+        EOF
+
+  notify:
+    name: 📢 Notify Results
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    
+    steps:
+    - name: 📢 Deployment Success
+      if: needs.deploy.result == 'success'
+      run: |
+        echo "🎉 Deployment completed successfully!"
+        echo "🌐 Service available at: http://${{ env.SERVER_HOST }}"
+        
+    - name: 📢 Deployment Failed
+      if: needs.deploy.result == 'failure'
+      run: |
+        echo "❌ Deployment failed!"
+        echo "🔍 Check logs for more details"
