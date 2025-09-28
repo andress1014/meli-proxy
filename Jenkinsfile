@@ -12,8 +12,13 @@ pipeline {
         stage('🔍 Checkout') {
             steps {
                 echo 'Checking out code...'
+                deleteDir() // Limpiar workspace completamente
                 checkout scm
-                sh 'git clean -fdx'
+                sh '''
+                    pwd
+                    ls -la
+                    git status || echo "Git status not available, continuing..."
+                '''
             }
         }
         
