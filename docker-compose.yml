@@ -95,7 +95,7 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "8090:80"  # El puerto 8090 que estás usando en JMeter
+      - "8091:80"  # Cambiado a puerto 8091 para evitar conflictos
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
