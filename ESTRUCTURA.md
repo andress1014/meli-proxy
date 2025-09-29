@@ -36,7 +36,6 @@
 
 - **Proxy**: http://localhost:8080
 - **Métricas**: http://localhost:9090/metrics (cada instancia)
-- **Grafana**: http://localhost:3000 (admin/admin)
 - **Redis**: localhost:6379
 
 ## 🏗️ ARQUITECTURA DEL SISTEMA
@@ -54,13 +53,6 @@
                        │   Redis Cache    │    │  TARGET         │
                        │   :6379          │    │  External API   │
                        └──────────────────┘    └─────────────────┘
-                                │                        ▲
-                                │                        │
-                       ┌──────────────────┐              │
-                       │   MÉTRICAS       │              │
-                       │   Grafana        │───────────── ┘
-                       │   :3000          │
-                       └──────────────────┘
 ```
 
 ### 🔄 Flujo de Datos:
@@ -69,7 +61,6 @@
 3. **Proxy** → Consulta Redis (rate limit + cache decisiones)
 4. **Proxy** → Envía request a api.mercadolibre.com
 5. **Proxy** → Respuesta transparente al cliente
-6. **Métricas** → Grafana para monitoreo
 
 ### 🚀 Performance:
 - **Capacidad**: 50,000 RPS

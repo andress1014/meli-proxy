@@ -28,9 +28,7 @@ help:
 	@echo "🐳 Docker:"
 	@echo "  make docker-build   - Build imagen Docker"
 	@echo "  make docker-run     - Ejecutar con Docker Compose"
-	@echo "  make docker-run-logs - Ejecutar con Loki + Grafana logs"
 	@echo "  make docker-stop    - Detener contenedores"
-	@echo "  make docker-stop-logs - Detener stack con logs"
 	@echo ""
 	@echo "🔧 Desarrollo:"
 	@echo "  make deps           - Instalar/actualizar dependencias"
@@ -41,8 +39,6 @@ help:
 	@echo "📋 Logs & Monitoreo:"
 	@echo "  make logs           - Ver logs de contenedores"
 	@echo "  make logs-proxy     - Ver logs solo de proxies"
-	@echo "  make open-grafana   - Abrir Grafana en navegador"
-	@echo "  make test-loki      - Verificar API de Loki"
 	@echo ""
 	@echo "🚀 Deployment (Producción):"
 	@echo "  make deploy-server  - Despliegue completo en servidor"
@@ -186,42 +182,9 @@ metrics:
 health:
 	curl -s http://localhost:8080/health | jq .
 
-# Ejecutar con logs completos (Loki + Grafana)
-docker-run-logs:
-	@echo "🚀 Iniciando stack completo con logs..."
-	docker-compose -f docker-compose.logging.yml up --build -d
-	@echo "✅ Stack con logs iniciado"
-	@echo "📊 Grafana: http://localhost:3000 (admin/admin)"
-	@echo "📋 Loki: http://localhost:3100"
-	@echo "🔍 Promtail recopilando logs automáticamente"
-
-# Detener stack con logs
-docker-stop-logs:
-	@echo "🛑 Deteniendo stack con logs..."
-	docker-compose -f docker-compose.logging.yml down --volumes
-	@echo "✅ Stack con logs detenido"
-
 # Ver logs de contenedores específicos
 logs-proxy:
 	docker-compose logs -f proxy1 proxy2 proxy3 proxy4
-
-# Ver logs de Loki
-logs-loki:
-	docker-compose -f docker-compose.logging.yml logs -f loki
-
-# Ver logs de Promtail  
-logs-promtail:
-	docker-compose -f docker-compose.logging.yml logs -f promtail
-
-# Abrir Grafana en el navegador (macOS)
-open-grafana:
-	@echo "🌐 Abriendo Grafana en el navegador..."
-	open http://localhost:3000
-
-# Test directo a Loki API
-test-loki:
-	@echo "🔍 Verificando API de Loki..."
-	curl -s http://localhost:3100/ready && echo "✅ Loki ready" || echo "❌ Loki no disponible"
 
 # === COMANDOS DE DEPLOYMENT ===
 
