@@ -1,5 +1,4 @@
 # Configuración optimizada para 50K RPS
-version: '3.8'
 
 services:
   # 4 instancias del proxy optimizado
@@ -137,7 +136,6 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
-      environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
