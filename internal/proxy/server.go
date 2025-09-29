@@ -7,10 +7,12 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/andress1014/meli-proxy/internal/config"
+	"github.com/andress1014/meli-proxy/internal/metrics"
 	"github.com/andress1014/meli-proxy/internal/middleware"
 	"github.com/andress1014/meli-proxy/internal/ratelimit"
 	"github.com/andress1014/meli-proxy/pkg/httpclient"
@@ -192,9 +194,11 @@ func (s *Server) isNoRateLimitRoute(path string) bool {
 
 // ServeNoRateLimit handles requests without rate limiting
 func (s *Server) ServeNoRateLimit(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+
 	// Remove the no-ratelimit prefix
 	originalPath := strings.TrimPrefix(r.URL.Path, "/no-ratelimit")
-	
+
 	// Create a new request with the modified path
 	targetURL := s.config.TargetURL + originalPath
 	if r.URL.RawQuery != "" {
@@ -204,10 +208,14 @@ func (s *Server) ServeNoRateLimit(w http.ResponseWriter, r *http.Request) {
 	// Create proxy request
 	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL, r.Body)
 	if err != nil {
-		s.logger.Error("Error creating proxy request", 
-			zap.Error(err), 
+		s.logger.Error("Error creating proxy request",
+			zap.Error(err),
 			zap.String("target_url", targetURL))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+
+		// Record metrics for error
+		duration := time.Since(startTime)
+		s.recordMetrics(r.Method, "/no-ratelimit/*", "500", duration)
 		return
 	}
 
@@ -232,10 +240,14 @@ func (s *Server) ServeNoRateLimit(w http.ResponseWriter, r *http.Request) {
 	// Execute request
 	resp, err := s.client.Do(proxyReq)
 	if err != nil {
-		s.logger.Error("Error executing proxy request", 
-			zap.Error(err), 
+		s.logger.Error("Error executing proxy request",
+			zap.Error(err),
 			zap.String("target_url", targetURL))
 		http.Error(w, "Bad Gateway", http.StatusBadGateway)
+
+		// Record metrics for error
+		duration := time.Since(startTime)
+		s.recordMetrics(r.Method, "/no-ratelimit/*", "502", duration)
 		return
 	}
 	defer resp.Body.Close()
@@ -256,6 +268,11 @@ func (s *Server) ServeNoRateLimit(w http.ResponseWriter, r *http.Request) {
 		s.logger.Error("Error copying response body", zap.Error(err))
 	}
 
+	// Record metrics for successful request
+	duration := time.Since(startTime)
+	statusCode := resp.StatusCode
+	s.recordMetrics(r.Method, "/no-ratelimit/*", strconv.Itoa(statusCode), duration)
+
 	// Log request without rate limit info
 	s.logger.Info("No-rate-limit request served",
 		zap.String("method", r.Method),
@@ -263,5 +280,11 @@ func (s *Server) ServeNoRateLimit(w http.ResponseWriter, r *http.Request) {
 		zap.String("target_url", targetURL),
 		zap.Int("status", resp.StatusCode),
 		zap.String("client_ip", clientIP),
+		zap.Duration("duration", duration),
 	)
+}
+
+// recordMetrics registers metrics for a request
+func (s *Server) recordMetrics(method, path, statusStr string, duration time.Duration) {
+	metrics.RecordRequest(method, path, statusStr, duration)
 }

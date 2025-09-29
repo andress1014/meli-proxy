@@ -1,0 +1,30 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Configuración de alertas (opcional)
+# rule_files:
+#   - "first_rules.yml"
+
+scrape_configs:
+  # Monitorear las instancias del proxy
+  - job_name: 'meli-proxy'
+    static_configs:
+      - targets: 
+        - 'proxy1:9090'
+        - 'proxy2:9090' 
+        - 'proxy3:9090'
+        - 'proxy4:9090'
+    scrape_interval: 5s
+    metrics_path: '/metrics'
+    
+  # Monitorear el propio Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Monitorear Redis (opcional)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
