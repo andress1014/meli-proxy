@@ -131,6 +131,8 @@ func (m *RateLimitMiddleware) addRateLimitHeaders(w http.ResponseWriter, results
 		}
 	}
 
+	// Add standard rate limit headers
+	w.Header().Set("X-RateLimit-Limit", strconv.Itoa(m.config.DefaultRPS))
 	if minRemaining >= 0 {
 		w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(minRemaining))
 	}

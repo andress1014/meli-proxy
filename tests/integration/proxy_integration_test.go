@@ -43,8 +43,9 @@ func TestFullProxyIntegration(t *testing.T) {
 		w.Write([]byte(`{"test": "integration", "path": "` + r.URL.Path + `"}`))
 	})
 
-	// Crear middleware de rate limiting (sin Redis real)
-	rateLimitMiddleware := middleware.NewRateLimitMiddleware(nil, cfg, logger)
+	// Crear middleware de rate limiting con dummy limiter
+	dummyLimiter := ratelimit.NewDummyLimiter()
+	rateLimitMiddleware := middleware.NewRateLimitMiddleware(dummyLimiter, cfg, logger)
 	
 	// Aplicar middlewares
 	handler := rateLimitMiddleware.Handler(finalHandler)
@@ -120,7 +121,8 @@ func TestMiddlewareChain(t *testing.T) {
 	})
 
 	// Crear cadena de middlewares
-	rateLimitMiddleware := middleware.NewRateLimitMiddleware(nil, cfg, logger)
+	rateLimiter := ratelimit.NewDummyLimiter()
+	rateLimitMiddleware := middleware.NewRateLimitMiddleware(rateLimiter, cfg, logger)
 	
 	// Aplicar middlewares en orden
 	handler := rateLimitMiddleware.Handler(baseHandler)
